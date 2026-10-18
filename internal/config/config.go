@@ -21,6 +21,26 @@ type Config struct {
 
 	Integrator IntegratorConfig
 	Loop       LoopConfig
+	Polls      PollsConfig
+	AI         AIConfig
+}
+
+// PollsConfig controls checking on tasks at AI.
+type PollsConfig struct {
+	// BatchSize checks are claimed per round; Workers of them run at once.
+	BatchSize int `env:"POLL_BATCH_SIZE,required"`
+	Workers   int `env:"POLL_WORKERS,required"`
+}
+
+// AIConfig is where the AI team's services are, one base URL per operation.
+type AIConfig struct {
+	RegisterCompareURL string `env:"AI_REGISTER_COMPARE_URL,required"`
+	SocialMediaURL     string `env:"AI_SOCIAL_MEDIA_URL,required"`
+	// Timeout of one status GET. Keep it well under the poll claim lease (30s).
+	Timeout time.Duration `env:"AI_TIMEOUT,required"`
+	// MaxResponseBytes is the biggest AI answer passed on to Integrator.Api,
+	// which accepts request bodies up to 1 MiB.
+	MaxResponseBytes int64 `env:"AI_MAX_RESPONSE_BYTES,required"`
 }
 
 type IntegratorConfig struct {

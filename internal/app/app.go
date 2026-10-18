@@ -10,8 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/d9293/halyk-genai-worker-response/internal/client/ai"
+	"github.com/d9293/halyk-genai-worker-response/internal/client/integrator"
 	"github.com/d9293/halyk-genai-worker-response/internal/config"
 	"github.com/d9293/halyk-genai-worker-response/internal/runner"
+	"github.com/d9293/halyk-genai-worker-response/internal/usecase/poll"
 )
 
 // loop is one independent worker loop, e.g. polling AI or publishing results.
@@ -24,8 +27,29 @@ type loop struct {
 // down in order: stop claiming new work, let work in progress finish for up to
 // ShutdownGrace, then cancel what is left.
 func Run(ctx context.Context, cfg config.Config) error {
-	// The polls and results loops are added in the next steps.
-	var loops []loop
+	api := integrator.New(integrator.Config{
+		BaseURL:    cfg.Integrator.URL,
+		Timeout:    cfg.Integrator.Timeout,
+		Retries:    cfg.Integrator.Retries,
+		RetryDelay: cfg.Integrator.RetryDelay,
+		WorkerID:   cfg.WorkerID,
+	})
+
+	aiClient, err := ai.New(ai.Config{
+		BaseURLs: map[string]string{
+			"REGISTER_COMPARE": cfg.AI.RegisterCompareURL,
+			"SOCIAL_MEDIA":     cfg.AI.SocialMediaURL,
+		},
+		Timeout:          cfg.AI.Timeout,
+		MaxResponseBytes: cfg.AI.MaxResponseBytes,
+	})
+	if err != nil {
+		return err
+	}
+	polls := poll.NewLoop(poll.Config{BatchSize: cfg.Polls.BatchSize, Workers: cfg.Polls.Workers}, api, aiClient)
+
+	// The results loop is added in the next step.
+	loops := []loop{{name: "polls", step: polls.Step}}
 
 	health := &http.Server{
 		Addr:              ":" + cfg.HealthPort,
