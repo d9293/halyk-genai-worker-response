@@ -10,11 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/d9293/halyk-genai-worker-response/internal/broker/kafka"
 	"github.com/d9293/halyk-genai-worker-response/internal/client/ai"
 	"github.com/d9293/halyk-genai-worker-response/internal/client/integrator"
 	"github.com/d9293/halyk-genai-worker-response/internal/config"
 	"github.com/d9293/halyk-genai-worker-response/internal/runner"
 	"github.com/d9293/halyk-genai-worker-response/internal/usecase/poll"
+	"github.com/d9293/halyk-genai-worker-response/internal/usecase/result"
 )
 
 // loop is one independent worker loop, e.g. polling AI or publishing results.
@@ -48,8 +50,27 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	polls := poll.NewLoop(poll.Config{BatchSize: cfg.Polls.BatchSize, Workers: cfg.Polls.Workers}, api, aiClient)
 
-	// The results loop is added in the next step.
-	loops := []loop{{name: "polls", step: polls.Step}}
+	producer, err := kafka.New(kafka.Config{
+		Brokers:  cfg.Kafka.Brokers,
+		Version:  cfg.Kafka.Version,
+		ClientID: cfg.Kafka.ClientID,
+		Timeout:  cfg.Kafka.Timeout,
+	})
+	if err != nil {
+		return err
+	}
+	// Closed after the loops are done, so publishes in progress can finish.
+	defer func() {
+		if err := producer.Close(); err != nil {
+			slog.Warn("close kafka producer", "error", err)
+		}
+	}()
+	results := result.NewLoop(result.Config{BatchSize: cfg.Results.BatchSize, Workers: cfg.Results.Workers}, api, producer)
+
+	loops := []loop{
+		{name: "polls", step: polls.Step},
+		{name: "results", step: results.Step},
+	}
 
 	health := &http.Server{
 		Addr:              ":" + cfg.HealthPort,
@@ -72,6 +93,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	slog.Info("worker.Response started",
 		"workerId", cfg.WorkerID,
 		"integrator", cfg.Integrator.URL,
+		"kafka", cfg.Kafka.Brokers,
 		"healthPort", cfg.HealthPort,
 		"loops", len(loops),
 	)

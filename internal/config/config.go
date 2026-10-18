@@ -23,6 +23,26 @@ type Config struct {
 	Loop       LoopConfig
 	Polls      PollsConfig
 	AI         AIConfig
+	Results    ResultsConfig
+	Kafka      KafkaConfig
+}
+
+// ResultsConfig controls publishing finished tasks to Kafka.
+type ResultsConfig struct {
+	// BatchSize results are claimed per round; Workers of them are published at once.
+	BatchSize int `env:"RESULT_BATCH_SIZE,required"`
+	Workers   int `env:"RESULT_WORKERS,required"`
+}
+
+// KafkaConfig is where results go. The topic comes from Integrator.Api with each result.
+type KafkaConfig struct {
+	// Brokers, comma-separated, e.g. localhost:29092.
+	Brokers []string `env:"KAFKA_BROKERS,required"`
+	// Version of the brokers, e.g. 3.9.0; needed for idempotent writes.
+	Version  string `env:"KAFKA_VERSION,required"`
+	ClientID string `env:"KAFKA_CLIENT_ID,required"`
+	// Timeout of one publish. Keep it well under the result claim lease (30s).
+	Timeout time.Duration `env:"KAFKA_TIMEOUT,required"`
 }
 
 // PollsConfig controls checking on tasks at AI.
