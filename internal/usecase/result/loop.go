@@ -14,7 +14,7 @@ import (
 	"github.com/d9293/halyk-genai-worker-response/internal/client/integrator"
 )
 
-//go:generate moq -out mocks_test.go . integratorClient publisher
+//go:generate go run github.com/matryer/moq@v0.8.1 -out mocks_test.go . integratorClient publisher
 
 type integratorClient interface {
 	ClaimResults(ctx context.Context, limit int) ([]integrator.ClaimedResult, error)
