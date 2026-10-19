@@ -13,7 +13,7 @@ import (
 	"github.com/d9293/halyk-genai-worker-response/internal/client/integrator"
 )
 
-//go:generate go run github.com/matryer/moq@v0.8.1 -out mocks_test.go . integratorClient aiClient
+//go:generate go run github.com/matryer/moq@v0.5.3 -out mocks_test.go . integratorClient aiClient
 
 type integratorClient interface {
 	ClaimPolls(ctx context.Context, limit int) ([]integrator.ClaimedPoll, error)
@@ -56,10 +56,12 @@ func (l *Loop) Step(ctx context.Context) (bool, error) {
 	var wg sync.WaitGroup
 	for _, p := range polls {
 		slots <- struct{}{}
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			defer func() { <-slots }()
 			l.process(ctx, p)
-		})
+		}()
 	}
 	wg.Wait()
 	return true, nil

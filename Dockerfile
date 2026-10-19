@@ -2,7 +2,7 @@
 # pass it with --config_file; secrets come as environment variables, which win
 # over the file.
 
-FROM golang:1.27.2 AS build
+FROM golang:1.24.13 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

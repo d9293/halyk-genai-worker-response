@@ -85,9 +85,11 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 	var wg sync.WaitGroup
 	for _, l := range loops {
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			runner.Run(ctx, work, l.name, runner.Config{IdleDelay: cfg.Loop.IdleDelay, MaxIdleDelay: cfg.Loop.MaxIdleDelay}, l.step)
-		})
+		}()
 	}
 
 	slog.Info("worker.Response started",
