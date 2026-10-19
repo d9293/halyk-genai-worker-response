@@ -5,3 +5,6 @@ coverage.*
 .idea/
 .vscode/
 .DS_Store
+# SonarQube reports and scanner work dir.
+.sonar/
+.scannerwork/
