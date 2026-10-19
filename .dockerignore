@@ -1,0 +1,5 @@
+.git
+.idea
+bin
+# Config is mounted at run time, never baked into the image.
+*.env

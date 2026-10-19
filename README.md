@@ -56,6 +56,22 @@ On Ctrl+C / SIGTERM it stops claiming new work, lets work in progress finish
 for up to `SHUTDOWN_GRACE`, then cancels what is left. Unfinished work is
 handed out again by Integrator.Api once its claim expires.
 
+## Docker
+
+```sh
+make docker   # builds halyk-genai-worker-response:local
+docker run -p 8084:8084 -v $PWD/my.env:/config/app.env:ro halyk-genai-worker-response:local
+```
+
+The image holds only the binary (distroless, non-root, no shell); no config is
+baked in, `*.env` files stay out of the build. Mount the env file at
+`/config/app.env` (or pass another path with `--config_file`) and give secrets
+as environment variables, which win over the file.
+
+In Kubernetes, set `terminationGracePeriodSeconds` above `SHUTDOWN_GRACE` plus
+10s for the last reports (45s for the default 30s); the default 30s would kill
+work in progress.
+
 ## Develop
 
 ```sh
